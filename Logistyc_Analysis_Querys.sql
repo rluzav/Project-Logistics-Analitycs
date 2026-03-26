@@ -213,3 +213,202 @@ SELECT  COUNT(*)
 FROM Shipment_Details 
 WHERE SH_ID IS NULL
     OR C_ID IS NULL;
+
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+-- EXPLORATORY DATA ANALYSIS AND INSIGHTS --
+-- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+--Preguntas de Negocio
+
+-- 1 ¿Cómo se distribuyen los clientes entre las distintas categorías y cuál concentra la mayor participación?
+
+SELECT C_TYPE , COUNT(*) AS CANTIDAD_CLIENTES
+FROM CUSTOMER
+GROUP BY C_TYPE
+ORDER BY CANTIDAD_CLIENTES DESC;
+
+-- 2 -  ¿Cuál es el monto total realmente convertido en ingresos, considerando únicamente los pagos con
+        -- estado PAID, y qué proporción representa frente al total de transacciones?
+
+SELECT 
+    SUM(CASE WHEN Payment_Status = 'PAID' THEN Amount ELSE 0 END) AS MontoTotalPaid,
+    CAST(SUM(CASE WHEN Payment_Status = 'PAID' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS DECIMAL(5,2)) AS PorcentajePagosCompletados
+FROM Payment_Details;
+
+-- 3 ¿Qué volumen de envíos corresponde al dominio internacional y cómo impacta en la estrategia logística global?
+
+SELECT COUNT(*) AS CANTIDAD_ENVIO_INTERNACIONAL
+FROM SHIPMENT_DETAILS
+WHERE SH_DOMAIN = 'International';
+
+-- 4 - ¿Cómo se distribuyen los empleados por designación y qué áreas concentran mayor carga operativa?
+
+SELECT E_DESIGNATION,COUNT(*) CANTIDAD_DESIGNADOS
+FROM EMPLOYEE_DETAILS
+GROUP BY E_DESIGNATION
+ORDER BY CANTIDAD_DESIGNADOS DESC;
+
+-- 5 - ¿Existen diferencias significativas en el peso promedio de los envíos domésticos frente a los internacionales,
+--    y qué porcentaje del total representan cada uno?
+
+SELECT SH_DOMAIN,
+    CAST(AVG(SH_WEIGHT) AS DECIMAL(10,2)) AS PROMEDIO_PESO,
+    CAST(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM SHIPMENT_DETAILS) AS DECIMAL(5,2)) AS PORCENTAJE_ENVÍOS
+FROM SHIPMENT_DETAILS
+GROUP BY SH_DOMAIN ;
+
+
+-- 6 - ¿Quiénes son los cinco clientes con mayor monto total pagado y cómo se posicionan en términos de contribución al negocio?.
+
+WITH Totales AS (
+    SELECT 
+        C.C_NAME,
+        SUM(PD.AMOUNT) AS MONTO_TOTAL
+    FROM CUSTOMER C
+    INNER JOIN Payment_Details PD 
+        ON C.C_ID = PD.C_ID
+    GROUP BY C.C_NAME
+)
+SELECT TOP 5
+    C_NAME,
+    MONTO_TOTAL,
+    RANK() OVER (ORDER BY MONTO_TOTAL DESC) AS RANKING_CONTRIBUCION
+FROM Totales
+ORDER BY MONTO_TOTAL DESC;
+
+
+-- 7 - ¿Cuál es la duración promedio (en años) de las membresías ?
+
+SELECT CAST(AVG(DATEDIFF(DAY, STAR_DATE, END_DATE) / 365.0)AS DECIMAL(10,2)) AS DURACION_PROMEDIO
+FROM MEMBERSHIP;
+
+-- 8 - ¿Cuál es el porcentaje de envíos DELIVERED vs NOT DELIVERED en la tabla Status?
+
+SELECT CURRENT_STATUS,
+       CAST (COUNT(*) * 100.00 / (SELECT COUNT(*) FROM STATUS_L) AS DECIMAL(10,2)) AS PROCENTAJE_ENVIOS
+FROM STATUS_L
+GROUP BY CURRENT_STATUS;
+
+
+
+-- 9 - ¿Cuál es el costo promedio de envíos por Tipo de servicio y por tipo de cliente?
+
+SELECT SP.SER_TYPE,C.C_TYPE,
+    CAST(AVG(SH_CHARGES) AS DECIMAL(10,2)) AS COSTO_PROMEDIO
+FROM SHIPMENT_DETAILS SP JOIN CUSTOMER C
+    ON SP.C_ID=C.C_ID
+GROUP BY C.C_TYPE,SP.SER_TYPE
+ORDER BY COSTO_PROMEDIO DESC;
+
+
+-- 10 - ¿Qué empleados concentran la mayor cantidad de envíos gestionados y cómo se distribuye la carga de trabajo?
+
+SELECT E_D.E_NAME , COUNT(E_D.E_NAME)  AS CANTIDAD_ENVIOS
+FROM EMPLOYEE_DETAILS E_D INNER JOIN EMPLOYEE_MANAGES_SHIPMENT E_M
+ON E_D.E_ID = E_M.EMPLOYEE_E_ID
+GROUP BY E_D.E_NAME
+ORDER BY  CANTIDAD_ENVIOS DESC;
+
+
+-- 11 -  ¿Cómo se pueden clasificar los clientes en categorías de Bajo, Medio y Alto valor según su monto total pagado?
+
+WITH Totales AS (
+    SELECT C.C_ID,
+           SUM(PD.AMOUNT) AS MONTO_TOTAL
+    FROM CUSTOMER C
+    INNER JOIN PAYMENT_DETAILS PD 
+        ON C.C_ID = PD.C_ID
+    GROUP BY C.C_ID
+)
+SELECT C_ID,
+       MONTO_TOTAL,
+       CAST (PERCENT_RANK() OVER (ORDER BY MONTO_TOTAL)AS DECIMAL(10,2)) AS RANK_RELATIVO,
+       CASE
+           WHEN PERCENT_RANK() OVER (ORDER BY MONTO_TOTAL) <= 0.33 THEN 'Bajo'
+           WHEN PERCENT_RANK() OVER (ORDER BY MONTO_TOTAL) <= 0.66 THEN 'Medio'
+           ELSE 'Alto'
+       END AS CATEGORIA
+FROM Totales
+ORDER BY MONTO_TOTAL DESC;
+
+-- 12 -  ¿Cómo se posicionan los clientes dentro de su propia categoría (C_TYPE) en función del monto total pagado?
+
+WITH Totales AS (
+    SELECT C.C_ID,
+           C.C_TYPE,
+           SUM(PD.AMOUNT) AS MONTO_TOTAL
+    FROM CUSTOMER C
+    INNER JOIN PAYMENT_DETAILS PD 
+        ON C.C_ID = PD.C_ID
+    GROUP BY C.C_ID, C.C_TYPE
+)
+SELECT C_ID,
+       C_TYPE,
+       MONTO_TOTAL,
+       RANK() OVER (PARTITION BY C_TYPE ORDER BY MONTO_TOTAL DESC) AS POSICION_RELATIVA
+FROM Totales
+ORDER BY C_TYPE, POSICION_RELATIVA;
+
+-- 13 - ¿Cuál es el tiempo promedio de entrega por tipo de contenido y qué categoría demuestra mayor eficiencia logística?
+
+WITH Tiempos AS (
+    SELECT 
+        SD.SH_CONTENT,
+        DATEDIFF(DAY, SL.Sent_date, SL.Delivery_date) AS DIAS_ENTREGA
+    FROM Shipment_Details SD
+    INNER JOIN Status_L SL 
+        ON SD.SH_ID = SL.SH_ID
+    WHERE SL.Sent_date IS NOT NULL 
+      AND SL.Delivery_date IS NOT NULL
+)
+SELECT 
+    SH_CONTENT,
+    CAST(AVG(DIAS_ENTREGA) AS DECIMAL(10,2)) AS PROMEDIO_DIAS,
+    RANK() OVER (ORDER BY AVG(DIAS_ENTREGA)) AS EFICIENCIA_RANK
+FROM Tiempos
+GROUP BY SH_CONTENT
+ORDER BY PROMEDIO_DIAS ASC;
+
+
+
+-- 14 -  ¿Qué tan efectivos son los distintos métodos de pago en convertir transacciones en pagos completados (PAID)?
+
+
+WITH Conteos AS (
+    SELECT 
+        Payment_Mode,
+        COUNT(*) AS TotalPagos,
+        SUM(CASE WHEN Payment_Status = 'PAID' THEN 1 ELSE 0 END) AS PagosExitosos
+    FROM Payment_Details
+    GROUP BY Payment_Mode
+)
+SELECT 
+    Payment_Mode,
+    TotalPagos,
+    PagosExitosos,
+    CAST( (PagosExitosos * 1.0 / TotalPagos) * 100 AS DECIMAL(5,2)) AS TasaConversion_Pct
+FROM Conteos
+ORDER BY TasaConversion_Pct DESC;
+
+
+-- 15 -  ¿Qué porcentaje de clientes con membresía vigente ha realizado al menos un pago en los últimos 20 años, y qué nos dice esto sobre su nivel de compromiso?
+
+WITH ClientesActivos AS (
+    SELECT C.C_ID
+    FROM Customer C
+    INNER JOIN Membership M ON C.M_ID = M.M_ID
+    WHERE M.End_date >= GETDATE()   -- Membresía vigente
+),
+PagosUltimos20Anios AS (
+    SELECT DISTINCT C.C_ID
+    FROM Customer C
+    INNER JOIN Membership M ON C.M_ID = M.M_ID
+    INNER JOIN Payment_Details PD ON C.C_ID = PD.C_ID
+    WHERE M.End_date >= GETDATE()   -- Membresía vigente
+      AND PD.Payment_Date >= DATEADD(YEAR, -20, GETDATE())
+)
+SELECT 
+    CAST( (COUNT(DISTINCT P.C_ID) * 1.0 / COUNT(DISTINCT A.C_ID)) * 100 AS DECIMAL(5,2)) AS PorcentajeConversion
+FROM ClientesActivos A
+LEFT JOIN PagosUltimos20Anios P 
+    ON A.C_ID = P.C_ID;
+
