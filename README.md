@@ -17,7 +17,7 @@ Mi objetivo es utilizar **SQL en SQL Server Management Studio (SSMS)** para real
 
 ---
 
-## 📊 Sobre los Datos
+## Sobre los Datos  📊
 
 La base de datos **BD_Logistics** contiene información integrada de clientes, empleados, membresías, pagos y envíos.  
 Las principales tablas son:
@@ -36,7 +36,7 @@ Los datos originales, junto con una explicación de cada columna, se pueden enco
 
 ---
 
-## 🧹 Limpieza y Validación
+## Limpieza y Validación   🧹
 
 Antes del análisis, se verificó la calidad de los datos:
 
