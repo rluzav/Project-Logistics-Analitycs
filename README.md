@@ -10,7 +10,7 @@ Mi objetivo es utilizar **SQL en SQL Server Management Studio (SSMS)** para real
 ## 📂 Estructura del Proyecto
 
 - [Sobre los Datos](#sobre-los-datos)
-- [Limpieza y Validación](#limpieza-y-validacion)
+- [Limpieza y Validación](#limpieza-y-validación)
 - [Preguntas de Negocio y EDA](#preguntas-de-negocio-y-eda)
 - [Conclusiones](#conclusiones)
 
@@ -36,7 +36,7 @@ Los datos originales, junto con una explicación de cada columna, se pueden enco
 
 ---
 
-## Limpieza y Validación   🧹
+## Limpieza y Validación  🧹
 
 Antes del análisis, se verificó la calidad de los datos:
 
