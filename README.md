@@ -9,10 +9,11 @@ Mi objetivo es utilizar **SQL en SQL Server Management Studio (SSMS)** para real
 
 ## 📂 Estructura del Proyecto
 
-- [Sobre los Datos](#sobre-los-datos)  
-- [Limpieza y Validación](#limpieza-y-validación)  
-- [Preguntas de Negocio y EDA](#preguntas-de-negocio-y-eda)  
+- [Sobre los Datos](#sobre-los-datos)
+- [Limpieza y Validación](#limpieza-y-validacion)
+- [Preguntas de Negocio y EDA](#preguntas-de-negocio-y-eda)
 - [Conclusiones](#conclusiones)
+
 
 ---
 
